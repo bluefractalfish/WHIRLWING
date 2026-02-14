@@ -103,7 +103,7 @@ def render_scan_report(root: Path, stats: ScanStats) -> None:
         largest.add_column("size", justify="right")
         largest.add_column("path", overflow="fold")
         for size, path in sorted(stats.largest, key=lambda x: x[0], reverse=True):
-            largest.add_row(Text(path,style=style_by_size(size)),format_bytes(size))
+            largest.add_row(Text(path,style=style_by_size(size)),Text(format_bytes(size),style_by_size(size)))
 
     content = Group(largest,inv)
     console.print(Panel.fit(content, title=f"summary of scan on {root}"))
@@ -114,17 +114,17 @@ def render_scan_report(root: Path, stats: ScanStats) -> None:
 def style_by_size(nbytes:int) -> str:
     gb = 1024 ** 3 
     mb = 1024 ** 2 
-    if nbytes >= 10 * gb:
-        return "bold red"
+    if nbytes >= 50 * gb:
+        return "bold purple"
     elif nbytes >= 5 * gb:
+        return "red"
+    elif nbytes >= 2 * gb:
         return "orange1"
-    elif nbytes >= 3 * gb:
-        return "yellow"
     elif nbytes >= 1 * gb:
+        return "yellow"
+    elif nbytes >= 50 * mb:
         return "green3"
-    elif nbytes >= 700 * mb:
-        return "purple"
-    return "blue"
+    return "white"
 def format_bytes(n: int) -> str:
     units = ["B", "KB", "MB", "GB", "TB", "PB"]
     v = float(n)
