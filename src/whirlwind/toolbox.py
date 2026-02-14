@@ -53,7 +53,7 @@ class ScanStats:
         self.num_files += 1
         self.total_bytes += size
         if top_n > 0:
-            item = (size, str(path))
+            item = (size, path.name)
             if len(self.largest) < top_n:
                 heapq.heappush(self.largest, item)
             else:
@@ -65,7 +65,7 @@ def scan_directory(root: Path, top_n: int = 100) -> ScanStats:
 
     with Progress(
         SpinnerColumn(),
-        TextColumn("[bold]running scan[/bold]"),
+        TextColumn("[bold]running scan on[/bold]"),
         TextColumn("{task.completed} dirs"),
         TimeElapsedColumn(),
         TimeRemainingColumn(),
@@ -79,6 +79,8 @@ def scan_directory(root: Path, top_n: int = 100) -> ScanStats:
 
             for name in filenames:
                 p = Path(dirpath) / name
+                if p.suffix.lower() not in ('.tif','.tiff'):
+                    continue
                 try:
                     st = p.stat()
                 except OSError:
@@ -89,7 +91,7 @@ def scan_directory(root: Path, top_n: int = 100) -> ScanStats:
 #===#
 def render_scan_report(root: Path, stats: ScanStats) -> None:
 
-    inv = Table(title="inventory", header_style="bold magenta")
+    inv = Table(title="inventory", header_style="bold yellow")
     inv.add_column("metric", style="bold")
     inv.add_column("value", justify="right")
     inv.add_row("directories", str(stats.num_dirs))
@@ -101,14 +103,28 @@ def render_scan_report(root: Path, stats: ScanStats) -> None:
         largest.add_column("size", justify="right")
         largest.add_column("path", overflow="fold")
         for size, path in sorted(stats.largest, key=lambda x: x[0], reverse=True):
-            largest.add_row(format_bytes(size), path)
-        
+            largest.add_row(Text(path,style=style_by_size(size)),format_bytes(size))
+
     content = Group(largest,inv)
     console.print(Panel.fit(content, title=f"summary of scan on {root}"))
         
 # ----------------------------
 # helpful tools
 # ----------------------------
+def style_by_size(nbytes:int) -> str:
+    gb = 1024 ** 3 
+    mb = 1024 ** 2 
+    if nbytes >= 10 * gb:
+        return "bold red"
+    elif nbytes >= 5 * gb:
+        return "orange1"
+    elif nbytes >= 3 * gb:
+        return "yellow"
+    elif nbytes >= 1 * gb:
+        return "green3"
+    elif nbytes >= 700 * mb:
+        return "purple"
+    return "blue"
 def format_bytes(n: int) -> str:
     units = ["B", "KB", "MB", "GB", "TB", "PB"]
     v = float(n)
@@ -423,7 +439,7 @@ def run(argv: Optional[List[str]] = None) -> int:
 
     scan = sub.add_parser("scan", help="Scan a directory and summarize files")
     scan.add_argument("root", type=str, help="Root directory to scan")
-    scan.add_argument("--top-n", type=int, default=10, help="Show top N largest files (0 disables)")
+    scan.add_argument("--top-n", type=int, default=500, help="Show top N largest files (0 disables)")
 
     args = p.parse_args(argv)
 
